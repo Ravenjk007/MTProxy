@@ -4,7 +4,6 @@ use tokio::net::TcpStream;
 /// Implementação mínima de um servidor SOCKS5 (RFC 1928), sem autenticação,
 /// suportando apenas o comando CONNECT (o mais comum).
 pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
-    // --- Etapa 1: negociação do método de autenticação ---
     let mut header = [0u8; 2];
     client.read_exact(&mut header).await?;
     let nmethods = header[1] as usize;
@@ -13,7 +12,6 @@ pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
 
     client.write_all(&[0x05, 0x00]).await?;
 
-    // --- Etapa 2: requisição de conexão ---
     let mut req = [0u8; 4];
     client.read_exact(&mut req).await?;
     let cmd = req[1];
