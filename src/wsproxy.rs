@@ -13,7 +13,6 @@ async fn consume_http_headers(socket: &mut TcpStream) -> std::io::Result<()> {
         if buf.len() >= 4 && &buf[buf.len() - 4..] == b"\r\n\r\n" {
             break;
         }
-        // Proteção simples contra headers gigantes/mal-formados
         if buf.len() > 8192 {
             break;
         }
@@ -22,22 +21,33 @@ async fn consume_http_headers(socket: &mut TcpStream) -> std::io::Result<()> {
 }
 
 /// Modo Websocket: consome o handshake HTTP enviado pelo cliente,
-/// responde com um "upgrade" (na prática, um texto fixo pra enganar
-/// inspeção de tráfego) e então encaminha os bytes crus pro destino.
-/// Utilizado pelo MTProxy para simular conexões WebSocket.
+/// responde com um "upgrade" e então encaminha os bytes crus pro destino.
 pub async fn handle_websocket(mut socket: TcpStream, cfg: &Config) -> std::io::Result<()> {
     consume_http_headers(&mut socket).await?;
-    let response = format!("HTTP/1.1 101 {}\r\n\r\n", cfg.status);
+    
+    // Resposta compatível com HTTP Injector e outros clientes
+    let response = format!(
+        "HTTP/1.1 200 OK\r\n\
+         Content-Type: text/plain\r\n\
+         Content-Length: 0\r\n\
+         Connection: keep-alive\r\n\
+         \r\n"
+    );
     socket.write_all(response.as_bytes()).await?;
     forward_to_target(socket, &cfg.default_target).await
 }
 
 /// Modo "Security": não espera nenhum handshake HTTP. Manda a linha de
-/// status direto e encaminha a conexão crua. Útil para clientes que já
-/// mandam a conexão (ex: sshd) sem passar por um proxy HTTP antes.
-/// Utilizado pelo MTProxy para encaminhamento direto de tráfego.
+/// status direto e encaminha a conexão crua.
 pub async fn handle_direct(mut socket: TcpStream, cfg: &Config) -> std::io::Result<()> {
-    let response = format!("HTTP/1.1 200 {}\r\n\r\n", cfg.status);
+    let response = format!(
+        "HTTP/1.1 200 {}\r\n\
+         Content-Type: text/plain\r\n\
+         Content-Length: 0\r\n\
+         Connection: keep-alive\r\n\
+         \r\n",
+        cfg.status
+    );
     socket.write_all(response.as_bytes()).await?;
     forward_to_target(socket, &cfg.default_target).await
 }
