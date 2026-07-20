@@ -25,7 +25,6 @@ async fn consume_http_headers(socket: &mut TcpStream) -> std::io::Result<()> {
 pub async fn handle_websocket(mut socket: TcpStream, cfg: &Config) -> std::io::Result<()> {
     consume_http_headers(&mut socket).await?;
     
-    // Resposta compatível com HTTP Injector e outros clientes
     let response = format!(
         "HTTP/1.1 200 OK\r\n\
          Content-Type: text/plain\r\n\
