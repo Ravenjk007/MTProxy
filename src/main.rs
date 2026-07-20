@@ -1,16 +1,11 @@
 use std::env;
 use tokio::net::{TcpListener, TcpStream};
 
+mod config;
 mod socks;
 mod wsproxy;
 
-/// Configuração global do proxy, lida a partir dos argumentos de linha de comando.
-#[derive(Clone)]
-pub struct Config {
-    pub port: u16,
-    pub status: String,
-    pub default_target: String,
-}
+use config::Config;
 
 #[tokio::main]
 async fn main() {
