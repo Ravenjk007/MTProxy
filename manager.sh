@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# MTProxy Manager - menu interativo de portas (estilo RustyManager)
+# MTProxy Manager - menu interativo de portas
 PROXY_BIN="/opt/mtproxy/proxy"
 SERVICE_PREFIX="mtproxy-"
 DEFAULT_TARGET="127.0.0.1:22"
@@ -200,7 +200,6 @@ test_connection() {
     echo "📡 Testando conexão na porta ${port}..."
     echo ""
     
-    # Teste 1: Verificar se a porta está ouvindo
     echo "🔍 Verificando se a porta está ouvindo..."
     if netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
         echo "✅ Porta ${port} está ouvindo"
@@ -210,7 +209,6 @@ test_connection() {
     
     echo ""
     
-    # Teste 2: Testar com curl (SOCKS5)
     echo "🔍 Testando conexão SOCKS5..."
     if command -v curl &> /dev/null; then
         local result
@@ -221,7 +219,7 @@ test_connection() {
             echo "❌ Falha na conexão SOCKS5"
         fi
     else
-        echo "⚠️  curl não está instalado. Instale com: apt install curl"
+        echo "⚠️  curl não está instalado."
     fi
     
     echo ""
