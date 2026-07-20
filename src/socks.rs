@@ -3,7 +3,6 @@ use tokio::net::TcpStream;
 
 /// Implementação mínima de um servidor SOCKS5 (RFC 1928), sem autenticação,
 /// suportando apenas o comando CONNECT (o mais comum).
-/// Utilizado pelo MTProxy para encaminhamento de tráfego SOCKS5.
 pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
     // --- Etapa 1: negociação do método de autenticação ---
     let mut header = [0u8; 2];
@@ -76,7 +75,6 @@ async fn read_port(client: &mut TcpStream) -> std::io::Result<u16> {
     Ok(u16::from_be_bytes(port_buf))
 }
 
-/// Envia uma resposta SOCKS5 padrão (endereço vinculado simplificado como 0.0.0.0:0).
 async fn send_reply(client: &mut TcpStream, code: u8) -> std::io::Result<()> {
     client
         .write_all(&[0x05, code, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
