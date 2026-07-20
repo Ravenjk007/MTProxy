@@ -1,8 +1,6 @@
 use tokio::io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-/// Implementação mínima de um servidor SOCKS5 (RFC 1928), sem autenticação,
-/// suportando apenas o comando CONNECT (o mais comum).
 pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
     let mut header = [0u8; 2];
     client.read_exact(&mut header).await?;
