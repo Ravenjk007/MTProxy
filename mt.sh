@@ -1,133 +1,52 @@
 #!/bin/bash
-# MTProxy Unified Menu
+# MTProxy Unified Menu - Versão Corrigida
 
 PROJECT_NAME="MTProxy"
-MENU_BOX_WIDTH=62
-
 MT_BIN="/usr/local/bin/mtproxy"
 PID_FILE="/tmp/mtproxy_"
 
+# Cores
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
 CYAN='\033[1;36m'
 WHITE='\033[1;37m'
-BG_BLUE='\033[44m'
-BG_GREEN='\033[42m'
-BG_RED='\033[41m'
-RESET='\033[0m'
-BOLD='\033[1m'
-
-strip_ansi() {
-    printf '%s' "$1" | sed -u 's/\x1b\[[0-9;]*m//g'
-}
-
-print_box_open() {
-    echo -e "${BLUE}╔$(printf '═%.0s' {1..62})╗${RESET}"
-}
-
-print_box_divider() {
-    echo -e "${BLUE}╠$(printf '═%.0s' {1..62})╣${RESET}"
-}
-
-print_box_close() {
-    echo -e "${BLUE}╚$(printf '═%.0s' {1..62})╝${RESET}"
-}
-
-print_box_line() {
-    local content="$1"
-    local inner_width="${2:-$MENU_BOX_WIDTH}"
-    local pad=$((inner_width - $(strip_ansi "$content" | wc -c)))
-    ((pad < 0)) && pad=0
-    printf '%b' "${BLUE}║${RESET}${content}"
-    printf '%*s' "$pad" ""
-    printf '%b\n' "${BLUE}║${RESET}"
-}
-
-print_box_heading() {
-    local text="$1"
-    local color="${2:-$WHITE}"
-    local len=${#text}
-    local left=$(( (MENU_BOX_WIDTH - len) / 2 ))
-    local right=$((MENU_BOX_WIDTH - len - left))
-    print_box_line "${color}$(printf '%*s%s%*s' "$left" "" "$text" "$right")${RESET}"
-}
-
-render_menu_option() {
-    local item="$1"
-    local emphasis="${2:-normal}"
-    local num="${item%% *}"
-    local label="${item#* • }"
-    local content
-
-    if [[ "$emphasis" == "red" ]]; then
-        content="${RED}  [${num}] ${label}${RESET}"
-    else
-        content="${WHITE}  [${CYAN}${num}${WHITE}] ${BLUE}${label}${RESET}"
-    fi
-    print_box_line "$content"
-}
+NC='\033[0m'
 
 print_header() {
     clear
-    print_box_open
-    local title="${PROJECT_NAME} Manager"
-    local title_len=${#title}
-    local title_left=$(( (MENU_BOX_WIDTH - title_len) / 2 ))
-    local title_right=$((MENU_BOX_WIDTH - title_len - title_left))
-    print_box_line "${BG_BLUE}${WHITE}$(printf '%*s%s%*s' "$title_left" "" "$title" "$title_right")${RESET}"
-    print_box_heading "Proxy + Protocolo integrados"
-    print_box_close
-    echo
+    echo -e "${BLUE}╔═══════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║         ${PROJECT_NAME} Manager          ║${NC}"
+    echo -e "${BLUE}╚═══════════════════════════════════════════╝${NC}"
+    echo ""
 }
 
-print_status() {
-    local proxy_ports=""
+show_status() {
+    echo -e "${CYAN}📊 Status:${NC}"
     for pidfile in ${PID_FILE}*.pid; do
         if [ -f "$pidfile" ]; then
             PORT=$(basename "$pidfile" .pid | sed 's/mtproxy_//')
             if ps -p $(cat "$pidfile") > /dev/null 2>&1; then
-                proxy_ports="$proxy_ports $PORT"
+                echo -e "  ${GREEN}✅ Porta $PORT: ativa${NC}"
             else
                 rm -f "$pidfile"
             fi
         fi
     done
-    proxy_ports=$(echo "$proxy_ports" | xargs | tr ' ' ',')
-
-    print_box_open
-    if [ -n "$proxy_ports" ]; then
-        print_box_line "${WHITE} Proxy ativo: ${GREEN}✅${RESET}"
-        print_box_line "${WHITE} Portas: ${CYAN}${proxy_ports}${RESET}"
-    else
-        print_box_line "${WHITE} Proxy: ${RED}❌ INATIVO${RESET}"
-    fi
-    print_box_close
-    echo
+    echo ""
 }
-
-pause() {
-    echo
-    print_warning "Pressione Enter para continuar..."
-    read -r
-}
-
-print_warning() { echo -e "${YELLOW}$1${RESET}"; }
-print_success() { echo -e "${GREEN}$1${RESET}"; }
-print_error() { echo -e "${RED}$1${RESET}"; }
-print_info() { echo -e "${CYAN}$1${RESET}"; }
 
 open_port() {
-    print_header
-    echo -e "${BLUE}🔓 ABRIR PORTA${RESET}"
-    print_box_divider
+    clear
+    echo -e "${BLUE}🔓 ABRIR PORTA${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
     echo ""
     
     read -p "Digite o número da porta: " PORT
     if [[ -z "$PORT" ]]; then
-        print_error "Porta inválida!"
-        pause
+        echo -e "${RED}❌ Porta inválida!${NC}"
+        sleep 2
         return
     fi
     
@@ -136,7 +55,7 @@ open_port() {
         rm -f "${PID_FILE}${PORT}.pid"
     fi
     
-    print_info "Abrindo porta ${PORT}..."
+    echo -e "${YELLOW}🔓 Abrindo porta ${PORT}...${NC}"
     if [ "$PORT" -lt 1024 ]; then
         nohup sudo ${MT_BIN} -p ${PORT} > "/tmp/mtproxy_${PORT}.log" 2>&1 &
     else
@@ -146,64 +65,44 @@ open_port() {
     echo $! > "${PID_FILE}${PORT}.pid"
     sleep 2
     
-    if ps -p $(cat "${PID_FILE}${PORT}.pid})" > /dev/null 2>&1; then
-        print_success "Porta ${PORT} aberta!"
-        print_info "Log: /tmp/mtproxy_${PORT}.log"
+    if ps -p $(cat "${PID_FILE}${PORT}.pid") > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Porta ${PORT} aberta!${NC}"
+        echo -e "📝 Log: /tmp/mtproxy_${PORT}.log"
     else
-        print_error "Falha ao abrir porta ${PORT}!"
+        echo -e "${RED}❌ Falha ao abrir porta ${PORT}!${NC}"
         rm -f "${PID_FILE}${PORT}.pid"
     fi
-    pause
+    sleep 2
 }
 
 close_port() {
-    print_header
-    echo -e "${BLUE}🔒 FECHAR PORTA${RESET}"
-    print_box_divider
+    clear
+    echo -e "${BLUE}🔒 FECHAR PORTA${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
     echo ""
     
     read -p "Digite o número da porta: " PORT
     if [[ -z "$PORT" ]]; then
-        print_error "Porta inválida!"
-        pause
+        echo -e "${RED}❌ Porta inválida!${NC}"
+        sleep 2
         return
     fi
     
     if [[ -f "${PID_FILE}${PORT}.pid" ]]; then
-        PID=$(cat "${PID_FILE}${PORT}.pid})
+        PID=$(cat "${PID_FILE}${PORT}.pid")
         sudo kill -9 $PID 2>/dev/null
         rm -f "${PID_FILE}${PORT}.pid"
-        print_success "Porta ${PORT} fechada!"
+        echo -e "${GREEN}✅ Porta ${PORT} fechada!${NC}"
     else
-        print_error "Porta ${PORT} não está aberta!"
+        echo -e "${RED}❌ Porta ${PORT} não está aberta!${NC}"
     fi
-    pause
-}
-
-show_status() {
-    print_header
-    echo -e "${BLUE}📊 STATUS${RESET}"
-    print_box_divider
-    echo ""
-    
-    for pidfile in ${PID_FILE}*.pid; do
-        if [ -f "$pidfile" ]; then
-            PORT=$(basename "$pidfile" .pid | sed 's/mtproxy_//')
-            PID=$(cat "$pidfile")
-            if ps -p $PID > /dev/null 2>&1; then
-                echo -e "${GREEN}✅ Porta $PORT: ativa (PID: $PID)${NC}"
-                echo -e "   Log: /tmp/mtproxy_${PORT}.log"
-            fi
-        fi
-    done
-    echo ""
-    pause
+    sleep 2
 }
 
 show_logs() {
-    print_header
-    echo -e "${BLUE}📝 LOGS${RESET}"
-    print_box_divider
+    clear
+    echo -e "${BLUE}📝 LOGS${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
     echo ""
     
     ls -la /tmp/mtproxy_*.log 2>/dev/null || echo -e "${YELLOW}Nenhum log encontrado${NC}"
@@ -211,16 +110,33 @@ show_logs() {
     read -p "Digite a porta para ver o log (Enter para sair): " PORT
     if [ -n "$PORT" ] && [ -f "/tmp/mtproxy_${PORT}.log" ]; then
         echo ""
-        tail -n 50 "/tmp/mtproxy_${PORT}.log"
+        echo -e "${CYAN}=== Últimas 30 linhas ===${NC}"
+        tail -n 30 "/tmp/mtproxy_${PORT}.log"
         echo ""
     fi
-    pause
+    sleep 2
+}
+
+show_menu() {
+    print_header
+    show_status
+    
+    echo -e "${CYAN}📋 OPÇÕES:${NC}"
+    echo "  [1] • ABRIR PORTA"
+    echo "  [2] • FECHAR PORTA"
+    echo "  [3] • STATUS"
+    echo "  [4] • VER LOGS"
+    echo "  [5] • MULTIPROTOCOLO"
+    echo "  [6] • MULTISTATUS"
+    echo "  [0] • SAIR"
+    echo ""
+    echo -n "INFORME UMA OPCAO: "
 }
 
 show_multiprotocol() {
-    print_header
+    clear
     echo -e "${BLUE}📡 MULTIPROTOCOLO${NC}"
-    print_box_divider
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
     echo ""
     echo -e "${GREEN}Protocolos Suportados:${NC}"
     echo ""
@@ -231,13 +147,13 @@ show_multiprotocol() {
     echo "  🔐 SECURITY    - Protocolo de segurança"
     echo "  📦 TCP         - Fallback TCP"
     echo ""
-    pause
+    read -p "Pressione Enter para continuar..."
 }
 
 show_multistatus() {
-    print_header
+    clear
     echo -e "${BLUE}📊 MULTISTATUS${NC}"
-    print_box_divider
+    echo -e "${BLUE}═══════════════════════════════════════════${NC}"
     echo ""
     
     if pgrep -f "/usr/local/bin/mtproxy" > /dev/null; then
@@ -253,9 +169,7 @@ show_multistatus() {
                     LOG="/tmp/mtproxy_${PORT}.log"
                     if [ -f "$LOG" ]; then
                         CONNECTIONS=$(grep -c "📩" "$LOG" 2>/dev/null || echo "0")
-                        KEEP_ALIVE=$(grep -c "💓" "$LOG" 2>/dev/null || echo "0")
                         echo -e "     Conexões: $CONNECTIONS"
-                        echo -e "     Keep-Alive: $KEEP_ALIVE"
                     fi
                 fi
             fi
@@ -264,56 +178,20 @@ show_multistatus() {
         echo -e "${RED}❌ Proxy está INATIVO${NC}"
     fi
     echo ""
-    pause
-}
-
-show_menu_principal() {
-    print_header
-    print_status
-    print_box_open
-    print_box_heading "MENU PRINCIPAL"
-    print_box_divider
-
-    local menu_items=(
-        "1 • Abrir Porta"
-        "2 • Fechar Porta"
-        "3 • Status"
-        "4 • Ver Logs"
-        "5 • Multiprotocolo"
-        "6 • Multistatus"
-        "0 • Sair"
-    )
-
-    for item in "${menu_items[@]}"; do
-        if [[ $item == 0* ]]; then
-            render_menu_option "$item" "red"
-        else
-            render_menu_option "$item"
-        fi
-    done
-
-    print_box_close
-    echo
-    echo -n -e "${BLUE}Selecione uma opção [0-6]: ${RESET}"
+    read -p "Pressione Enter para continuar..."
 }
 
 while true; do
-    show_menu_principal
+    show_menu
     read OPTION
     case $OPTION in
         1) open_port ;;
         2) close_port ;;
-        3) show_status ;;
+        3) clear; show_status; read -p "Pressione Enter...";;
         4) show_logs ;;
         5) show_multiprotocol ;;
         6) show_multistatus ;;
-        0) 
-            echo -e "${GREEN}👋 Saindo...${NC}"
-            exit 0 
-            ;;
-        *) 
-            echo -e "${RED}❌ Opção inválida!${NC}"
-            sleep 2 
-            ;;
+        0) echo -e "${GREEN}👋 Saindo...${NC}"; exit 0 ;;
+        *) echo -e "${RED}❌ Opção inválida!${NC}"; sleep 2 ;;
     esac
 done
