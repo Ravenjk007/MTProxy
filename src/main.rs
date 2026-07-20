@@ -12,14 +12,12 @@ async fn main() {
     let config = parse_args();
     let listener = TcpListener::bind(("0.0.0.0", config.port))
         .await
-        .expect("Falha ao abrir a porta. Ela já está em uso?");
+        .expect("Falha ao abrir a porta");
 
-    println!("🚀 MTProxy escutando na porta {}", config.port);
-    println!("🎯 Destino padrão: {}", config.default_target);
-    println!("📡 Status: {}", config.status);
+    println!("MTProxy escutando na porta {}", config.port);
 
     loop {
-        let (socket, addr) = match listener.accept().await {
+        let (socket, _addr) = match listener.accept().await {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("Erro ao aceitar conexão: {}", e);
@@ -28,14 +26,11 @@ async fn main() {
         };
         let cfg = config.clone();
         tokio::spawn(async move {
-            if let Err(e) = handle_client(socket, cfg).await {
-                eprintln!("Conexão de {} encerrada: {}", addr, e);
-            }
+            let _ = handle_client(socket, cfg).await;
         });
     }
 }
 
-/// Lê argumentos como: --port 80 --status "@MTProxy" --target 127.0.0.1:22
 fn parse_args() -> Config {
     let args: Vec<String> = env::args().collect();
     let mut port: u16 = 80;
@@ -63,15 +58,10 @@ fn parse_args() -> Config {
         }
     }
 
-    Config {
-        port,
-        status,
-        default_target,
-    }
+    Config { port, status, default_target }
 }
 
-/// Decide qual protocolo tratar de acordo com os primeiros bytes recebidos.
-async fn handle_client(socket: TcpStream, cfg: Config) -> std::io::Result<()> {
+async fn handle_client(socket: tokio::net::TcpStream, cfg: Config) -> std::io::Result<()> {
     let mut peek_buf = [0u8; 8];
     let n = socket.peek(&mut peek_buf).await?;
 
