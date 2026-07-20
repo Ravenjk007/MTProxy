@@ -2,6 +2,9 @@
 name = "mtproxy"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ravenjk007 <seugmailaqui>"]
+description = "MTProxy - Proxy multifuncional (SOCKS5, WebSocket, modo direto)"
+license = "MIT"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
