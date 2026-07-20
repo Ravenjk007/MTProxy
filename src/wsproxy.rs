@@ -1,6 +1,6 @@
 use tokio::io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use crate::Config;
+use crate::config::Config;
 
 /// Lê e descarta os headers HTTP até encontrar a linha em branco (\r\n\r\n).
 async fn consume_http_headers(socket: &mut TcpStream) -> std::io::Result<()> {
