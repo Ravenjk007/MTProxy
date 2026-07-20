@@ -7,8 +7,8 @@ mod wsproxy;
 #[derive(Clone)]
 pub struct Config {
     pub port: u16,
-    pub status: String, // texto enviado na resposta HTTP fake (ex: "@MTProxy")
-    pub default_target: String, // destino padrão pros modos websocket/direct (ex: SSH local)
+    pub status: String,
+    pub default_target: String,
 }
 
 #[tokio::main]
@@ -18,8 +18,9 @@ async fn main() {
         .await
         .expect("Falha ao abrir a porta. Ela já está em uso?");
 
-    println!("MTProxy escutando na porta {}", config.port);
-    println!("Destino padrão: {}", config.default_target);
+    println!("🚀 MTProxy escutando na porta {}", config.port);
+    println!("🎯 Destino padrão: {}", config.default_target);
+    println!("📡 Status: {}", config.status);
 
     loop {
         let (socket, addr) = match listener.accept().await {
@@ -79,13 +80,10 @@ async fn handle_client(socket: TcpStream, cfg: Config) -> std::io::Result<()> {
     let n = socket.peek(&mut peek_buf).await?;
 
     if n >= 1 && peek_buf[0] == 0x05 {
-        // Primeiro byte 0x05 = início de handshake SOCKS5
         socks::handle_socks5(socket).await
     } else if n >= 3 && &peek_buf[0..3] == b"GET" {
-        // Parece uma requisição HTTP -> tratamos como upgrade Websocket
         wsproxy::handle_websocket(socket, &cfg).await
     } else {
-        // Qualquer outra coisa: modo "security" (resposta direta, sem esperar handshake)
         wsproxy::handle_direct(socket, &cfg).await
     }
 }
