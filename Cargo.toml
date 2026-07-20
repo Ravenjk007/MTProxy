@@ -2,14 +2,9 @@
 name = "mtproxy"
 version = "0.1.0"
 edition = "2021"
+authors = ["Seu Nome <email@exemplo.com>"]
+description = "MTProxy - Proxy multifuncional (SOCKS5, WebSocket, modo direto)"
+license = "MIT"
 
 [dependencies]
-tokio = { version = "1.35", features = ["full"] }
-anyhow = "1.0"
-log = "0.4"
-env_logger = "0.10"
-clap = { version = "4.4", features = ["derive"] }
-
-[[bin]]
-name = "mtproxy"
-path = "src/main.rs"
+tokio = { version = "1", features = ["io-util", "net", "macros", "rt-multi-thread", "sync", "time"] }
