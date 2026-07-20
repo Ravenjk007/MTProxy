@@ -2,9 +2,12 @@
 name = "mtproxy"
 version = "0.1.0"
 edition = "2021"
-authors = ["Seu Nome <email@exemplo.com>"]
-description = "MTProxy - Proxy multifuncional (SOCKS5, WebSocket, modo direto)"
+authors = ["Ravenjk007 <ravenjk007@github.com>"]
+description = "MTProxy - Proxy multifuncional (SOCKS5, WebSocket, modo direto) inspirado no MTProto"
 license = "MIT"
+repository = "https://github.com/Ravenjk007/MTProxy"
+homepage = "https://github.com/Ravenjk007/MTProxy"
+documentation = "https://github.com/Ravenjk007/MTProxy#readme"
 
 [dependencies]
 tokio = { version = "1", features = ["io-util", "net", "macros", "rt-multi-thread", "sync", "time"] }
