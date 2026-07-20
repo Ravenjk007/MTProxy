@@ -7,7 +7,7 @@ use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "mtproxy")]
-#[command(about = "MTProxy - Multiprotocol VPN/HTTP Inject")]
+#[command(about = "MTProxy - VPN/HTTP Inject")]
 struct Cli {
     #[arg(short = 'p', long = "port", default_value = "8080")]
     port: u16,
@@ -45,11 +45,6 @@ async fn main() -> Result<()> {
                     let first_line = request.lines().next().unwrap_or("");
                     info!("📩 [{}] {}", peer_addr, first_line);
                     
-                    // Detectar protocolo
-                    let protocol = detect_protocol(&buffer[..n]);
-                    info!("📡 [{}] Protocol: {}", peer_addr, protocol);
-                    
-                    // Resposta 200 OK para todos
                     let response = "HTTP/1.1 200 OK\r\n\
                                     Content-Type: text/plain\r\n\
                                     Content-Length: 2\r\n\
@@ -61,7 +56,6 @@ async fn main() -> Result<()> {
                     let _ = socket.write_all(response.as_bytes()).await;
                     info!("✅ [{}] 200 OK sent", peer_addr);
                     
-                    // Keep-Alive infinito
                     let mut interval = tokio::time::interval(Duration::from_secs(15));
                     loop {
                         interval.tick().await;
@@ -71,44 +65,10 @@ async fn main() -> Result<()> {
                         }
                     }
                 }
-                Ok(_) => info!("📦 [{}] Empty request", peer_addr),
+                Ok(_) => info!("📦 [{}] Empty", peer_addr),
                 Err(e) => error!("❌ [{}] Error: {}", peer_addr, e),
             }
         });
     }
     Ok(())
-}
-
-fn detect_protocol(data: &[u8]) -> &'static str {
-    if data.is_empty() { return "UNKNOWN"; }
-    
-    // SOCKS5
-    if data.len() >= 1 && data[0] == 0x05 { return "SOCKS5"; }
-    
-    // TLS
-    if data.len() >= 3 && data[0] == 0x16 { return "TLS"; }
-    
-    // HTTP/WebSocket
-    if let Ok(text) = std::str::from_utf8(data) {
-        let text_lower = text.to_lowercase();
-        
-        if text_lower.contains("upgrade: websocket") || 
-           text_lower.contains("sec-websocket-key") {
-            return "WEBSOCKET";
-        }
-        
-        if text.starts_with("GET ") || text.starts_with("POST ") || 
-           text.starts_with("PUT ") || text.starts_with("DELETE ") || 
-           text.starts_with("CONNECT ") || text.starts_with("HEAD ") ||
-           text.starts_with("OPTIONS ") || text.starts_with("PATCH ") ||
-           text.contains("HTTP/") {
-            return "HTTP";
-        }
-        
-        if text.starts_with("SECURITY") || text.starts_with("AUTH") {
-            return "SECURITY";
-        }
-    }
-    
-    "TCP"
 }
