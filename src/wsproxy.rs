@@ -2,7 +2,6 @@ use tokio::io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use crate::config::Config;
 
-/// Lê e descarta os headers HTTP até encontrar a linha em branco (\r\n\r\n).
 async fn consume_http_headers(socket: &mut TcpStream) -> std::io::Result<()> {
     let mut buf: Vec<u8> = Vec::new();
     let mut tmp = [0u8; 1];
@@ -20,31 +19,17 @@ async fn consume_http_headers(socket: &mut TcpStream) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Modo Websocket: consome o handshake HTTP enviado pelo cliente,
-/// responde com um "upgrade" e então encaminha os bytes crus pro destino.
 pub async fn handle_websocket(mut socket: TcpStream, cfg: &Config) -> std::io::Result<()> {
     consume_http_headers(&mut socket).await?;
     
-    let response = format!(
-        "HTTP/1.1 200 OK\r\n\
-         Content-Type: text/plain\r\n\
-         Content-Length: 0\r\n\
-         Connection: keep-alive\r\n\
-         \r\n"
-    );
+    let response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n";
     socket.write_all(response.as_bytes()).await?;
     forward_to_target(socket, &cfg.default_target).await
 }
 
-/// Modo "Security": não espera nenhum handshake HTTP. Manda a linha de
-/// status direto e encaminha a conexão crua.
 pub async fn handle_direct(mut socket: TcpStream, cfg: &Config) -> std::io::Result<()> {
     let response = format!(
-        "HTTP/1.1 200 {}\r\n\
-         Content-Type: text/plain\r\n\
-         Content-Length: 0\r\n\
-         Connection: keep-alive\r\n\
-         \r\n",
+        "HTTP/1.1 200 {}\r\nContent-Type: text/plain\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n",
         cfg.status
     );
     socket.write_all(response.as_bytes()).await?;
