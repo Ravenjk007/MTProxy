@@ -12,7 +12,6 @@ pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
     let mut methods = vec![0u8; nmethods];
     client.read_exact(&mut methods).await?;
 
-    // Respondemos dizendo que não exigimos autenticação (0x00)
     client.write_all(&[0x05, 0x00]).await?;
 
     // --- Etapa 2: requisição de conexão ---
@@ -23,14 +22,12 @@ pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
 
     let target_addr = match atyp {
         0x01 => {
-            // Endereço IPv4
             let mut addr = [0u8; 4];
             client.read_exact(&mut addr).await?;
             let port = read_port(&mut client).await?;
             format!("{}.{}.{}.{}:{}", addr[0], addr[1], addr[2], addr[3], port)
         }
         0x03 => {
-            // Nome de domínio
             let mut len_buf = [0u8; 1];
             client.read_exact(&mut len_buf).await?;
             let len = len_buf[0] as usize;
@@ -40,7 +37,6 @@ pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
             format!("{}:{}", String::from_utf8_lossy(&domain), port)
         }
         0x04 => {
-            // Endereço IPv6
             let mut addr = [0u8; 16];
             client.read_exact(&mut addr).await?;
             let port = read_port(&mut client).await?;
@@ -51,25 +47,24 @@ pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
             format!("[{}]:{}", segs.join(":"), port)
         }
         _ => {
-            send_reply(&mut client, 0x08).await?; // tipo de endereço não suportado
+            send_reply(&mut client, 0x08).await?;
             return Ok(());
         }
     };
 
     if cmd != 0x01 {
-        // Só suportamos CONNECT. BIND e UDP ASSOCIATE ficam de fora por enquanto.
-        send_reply(&mut client, 0x07).await?; // comando não suportado
+        send_reply(&mut client, 0x07).await?;
         return Ok(());
     }
 
     match TcpStream::connect(&target_addr).await {
         Ok(mut remote) => {
-            send_reply(&mut client, 0x00).await?; // sucesso
+            send_reply(&mut client, 0x00).await?;
             copy_bidirectional(&mut client, &mut remote).await?;
             Ok(())
         }
         Err(e) => {
-            send_reply(&mut client, 0x05).await?; // conexão recusada
+            send_reply(&mut client, 0x05).await?;
             Err(e)
         }
     }
