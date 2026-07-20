@@ -5,8 +5,6 @@ edition = "2021"
 authors = ["Ravenjk007 <ravenjk007@github.com>"]
 description = "MTProxy - Proxy multifuncional (SOCKS5, WebSocket, modo direto)"
 license = "MIT"
-repository = "https://github.com/Ravenjk007/MTProxy"
-homepage = "https://github.com/Ravenjk007/MTProxy"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
