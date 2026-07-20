@@ -1,84 +1,90 @@
-use tokio::io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
+use std::env;
+use tokio::net::{TcpListener, TcpStream};
 
-/// Implementação mínima de um servidor SOCKS5 (RFC 1928), sem autenticação,
-/// suportando apenas o comando CONNECT (o mais comum).
-/// Utilizado pelo MTProxy para encaminhamento de tráfego SOCKS5.
-pub async fn handle_socks5(mut client: TcpStream) -> std::io::Result<()> {
-    // --- Etapa 1: negociação do método de autenticação ---
-    let mut header = [0u8; 2];
-    client.read_exact(&mut header).await?;
-    let nmethods = header[1] as usize;
-    let mut methods = vec![0u8; nmethods];
-    client.read_exact(&mut methods).await?;
+mod socks;
+mod wsproxy;
 
-    client.write_all(&[0x05, 0x00]).await?;
-
-    // --- Etapa 2: requisição de conexão ---
-    let mut req = [0u8; 4];
-    client.read_exact(&mut req).await?;
-    let cmd = req[1];
-    let atyp = req[3];
-
-    let target_addr = match atyp {
-        0x01 => {
-            let mut addr = [0u8; 4];
-            client.read_exact(&mut addr).await?;
-            let port = read_port(&mut client).await?;
-            format!("{}.{}.{}.{}:{}", addr[0], addr[1], addr[2], addr[3], port)
-        }
-        0x03 => {
-            let mut len_buf = [0u8; 1];
-            client.read_exact(&mut len_buf).await?;
-            let len = len_buf[0] as usize;
-            let mut domain = vec![0u8; len];
-            client.read_exact(&mut domain).await?;
-            let port = read_port(&mut client).await?;
-            format!("{}:{}", String::from_utf8_lossy(&domain), port)
-        }
-        0x04 => {
-            let mut addr = [0u8; 16];
-            client.read_exact(&mut addr).await?;
-            let port = read_port(&mut client).await?;
-            let segs: Vec<String> = addr
-                .chunks(2)
-                .map(|c| format!("{:02x}{:02x}", c[0], c[1]))
-                .collect();
-            format!("[{}]:{}", segs.join(":"), port)
-        }
-        _ => {
-            send_reply(&mut client, 0x08).await?;
-            return Ok(());
-        }
-    };
-
-    if cmd != 0x01 {
-        send_reply(&mut client, 0x07).await?;
-        return Ok(());
-    }
-
-    match TcpStream::connect(&target_addr).await {
-        Ok(mut remote) => {
-            send_reply(&mut client, 0x00).await?;
-            copy_bidirectional(&mut client, &mut remote).await?;
-            Ok(())
-        }
-        Err(e) => {
-            send_reply(&mut client, 0x05).await?;
-            Err(e)
-        }
-    }
+/// Configuração global do proxy, lida a partir dos argumentos de linha de comando.
+#[derive(Clone)]
+pub struct Config {
+    pub port: u16,
+    pub status: String,
+    pub default_target: String,
 }
 
-async fn read_port(client: &mut TcpStream) -> std::io::Result<u16> {
-    let mut port_buf = [0u8; 2];
-    client.read_exact(&mut port_buf).await?;
-    Ok(u16::from_be_bytes(port_buf))
-}
-
-/// Envia uma resposta SOCKS5 padrão (endereço vinculado simplificado como 0.0.0.0:0).
-async fn send_reply(client: &mut TcpStream, code: u8) -> std::io::Result<()> {
-    client
-        .write_all(&[0x05, code, 0x00, 0x01, 0, 0, 0, 0, 0, 0])
+#[tokio::main]
+async fn main() {
+    let config = parse_args();
+    let listener = TcpListener::bind(("0.0.0.0", config.port))
         .await
+        .expect("Falha ao abrir a porta. Ela já está em uso?");
+
+    println!("🚀 MTProxy escutando na porta {}", config.port);
+    println!("🎯 Destino padrão: {}", config.default_target);
+    println!("📡 Status: {}", config.status);
+
+    loop {
+        let (socket, addr) = match listener.accept().await {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Erro ao aceitar conexão: {}", e);
+                continue;
+            }
+        };
+        let cfg = config.clone();
+        tokio::spawn(async move {
+            if let Err(e) = handle_client(socket, cfg).await {
+                eprintln!("Conexão de {} encerrada: {}", addr, e);
+            }
+        });
+    }
+}
+
+/// Lê argumentos como: --port 80 --status "@MTProxy" --target 127.0.0.1:22
+fn parse_args() -> Config {
+    let args: Vec<String> = env::args().collect();
+    let mut port: u16 = 80;
+    let mut status = "@MTProxy".to_string();
+    let mut default_target = "127.0.0.1:22".to_string();
+
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--port" => {
+                port = args.get(i + 1).and_then(|v| v.parse().ok()).unwrap_or(port);
+                i += 2;
+            }
+            "--status" => {
+                status = args.get(i + 1).cloned().unwrap_or(status);
+                i += 2;
+            }
+            "--target" => {
+                default_target = args.get(i + 1).cloned().unwrap_or(default_target);
+                i += 2;
+            }
+            _ => {
+                i += 1;
+            }
+        }
+    }
+
+    Config {
+        port,
+        status,
+        default_target,
+    }
+}
+
+/// Decide qual protocolo tratar de acordo com os primeiros bytes recebidos.
+async fn handle_client(socket: TcpStream, cfg: Config) -> std::io::Result<()> {
+    let mut peek_buf = [0u8; 8];
+    let n = socket.peek(&mut peek_buf).await?;
+
+    if n >= 1 && peek_buf[0] == 0x05 {
+        socks::handle_socks5(socket).await
+    } else if n >= 3 && &peek_buf[0..3] == b"GET" {
+        wsproxy::handle_websocket(socket, &cfg).await
+    } else {
+        wsproxy::handle_direct(socket, &cfg).await
+    }
 }
