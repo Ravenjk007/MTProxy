@@ -30,13 +30,7 @@ cargo build --release
 cp ./target/release/mtproxy /opt/mtproxy/proxy
 chmod +x /opt/mtproxy/proxy
 
-if [ -f /root/MTProxy/manager.sh ]; then
-    cp /root/MTProxy/manager.sh /opt/mtproxy/manager
-    chmod +x /opt/mtproxy/manager
-    ln -sf /opt/mtproxy/manager /usr/local/bin/"$CMD_NAME"
-else
-    ln -sf /opt/mtproxy/proxy /usr/local/bin/"$CMD_NAME"
-fi
+ln -sf /opt/mtproxy/proxy /usr/local/bin/"$CMD_NAME"
 
 rm -rf /root/MTProxy
 
