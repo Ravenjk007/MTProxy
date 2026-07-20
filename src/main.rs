@@ -15,6 +15,8 @@ async fn main() {
         .expect("Falha ao abrir a porta");
 
     println!("MTProxy escutando na porta {}", config.port);
+    println!("🎯 Destino: {}", config.default_target);
+    println!("📡 Status: {}", config.status);
 
     loop {
         let (socket, _addr) = match listener.accept().await {
