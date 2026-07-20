@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # MTProxy Installer
-# ---->>>> Configure aqui o seu repositório
 REPO_URL="https://github.com/Ravenjk007/MTProxy.git"
 REPO_BRANCH="main"
 CMD_NAME="mtproxy"
@@ -14,7 +13,7 @@ show_progress() {
 }
 
 error_exit() {
-    echo -e "\nErro: $1"
+    echo -e "\n❌ Erro: $1"
     exit 1
 }
 
@@ -31,14 +30,12 @@ else
     apt update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar os repositorios"
     increment_step
 
-    # ---->>>> Verificação do sistema
     show_progress "Verificando o sistema..."
     if ! command -v lsb_release &> /dev/null; then
         apt install lsb-release -y > /dev/null 2>&1 || error_exit "Falha ao instalar lsb-release"
     fi
     increment_step
 
-    # ---->>>> Verificação do sistema
     OS_NAME=$(lsb_release -is)
     VERSION=$(lsb_release -rs)
     case $OS_NAME in
@@ -68,59 +65,75 @@ else
     esac
     increment_step
 
-    # ---->>>> Instalação de pacotes requisitos e atualização do sistema
-    show_progress "Atualizando o sistema..."
+    show_progress "Instalando dependencias do sistema..."
     apt upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
-    apt-get install curl build-essential git -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+    apt-get install -y curl build-essential git pkg-config libssl-dev > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
     increment_step
 
-    # ---->>>> Criando o diretório do script
     show_progress "Criando diretorio /opt/mtproxy..."
     mkdir -p /opt/mtproxy > /dev/null 2>&1
     increment_step
 
-    # ---->>>> Instalar rust
     show_progress "Instalando Rust..."
     if ! command -v rustc &> /dev/null; then
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y > /dev/null 2>&1 || error_exit "Falha ao instalar Rust"
         source "$HOME/.cargo/env"
     fi
+    rustup default stable > /dev/null 2>&1
     increment_step
 
-    # ---->>>> Instalar o MTProxy
-    show_progress "Compilando MTProxy, isso pode levar algum tempo dependendo da maquina..."
+    show_progress "Compilando MTProxy, isso pode levar alguns minutos..."
     if [ -d "/root/MTProxy" ]; then
         rm -rf /root/MTProxy
     fi
+    
     git clone --branch "$REPO_BRANCH" "$REPO_URL" /root/MTProxy > /dev/null 2>&1 || error_exit "Falha ao clonar MTProxy"
     
-    if [ -f /root/MTProxy/menu.sh ]; then
-        mv /root/MTProxy/menu.sh /opt/mtproxy/menu
+    if [ -f /root/MTProxy/manager.sh ]; then
+        mv /root/MTProxy/manager.sh /opt/mtproxy/manager
     fi
     
     cd /root/MTProxy || error_exit "Diretório do MTProxy não encontrado"
-    cargo build --release --jobs "$(nproc)" > /dev/null 2>&1 || error_exit "Falha ao compilar MTProxy"
-    mv ./target/release/mtproxy /opt/mtproxy/proxy || error_exit "Binário compilado não encontrado"
+    
+    echo "   ⏳ Compilando (isso pode levar 2-5 minutos)..."
+    cargo build --release > /tmp/mtproxy_build.log 2>&1
+    
+    if [ $? -ne 0 ]; then
+        echo "   ❌ Erro na compilação. Veja o log:"
+        tail -30 /tmp/mtproxy_build.log
+        error_exit "Falha ao compilar MTProxy"
+    fi
+    
+    if [ -f ./target/release/mtproxy ]; then
+        mv ./target/release/mtproxy /opt/mtproxy/proxy || error_exit "Binário compilado não encontrado"
+    else
+        error_exit "Binário não foi gerado"
+    fi
     increment_step
 
-    # ---->>>> Configuração de permissões
     show_progress "Configurando permissões..."
     chmod +x /opt/mtproxy/proxy
-    [ -f /opt/mtproxy/menu ] && chmod +x /opt/mtproxy/menu
+    [ -f /opt/mtproxy/manager ] && chmod +x /opt/mtproxy/manager
     
-    if [ -f /opt/mtproxy/menu ]; then
-        ln -sf /opt/mtproxy/menu /usr/local/bin/"$CMD_NAME"
+    if [ -f /opt/mtproxy/manager ]; then
+        ln -sf /opt/mtproxy/manager /usr/local/bin/"$CMD_NAME"
     else
         ln -sf /opt/mtproxy/proxy /usr/local/bin/"$CMD_NAME"
     fi
     increment_step
 
-    # ---->>>> Limpeza
     show_progress "Limpando diretórios temporários..."
     cd /root/
     rm -rf /root/MTProxy/
+    rm -f /tmp/mtproxy_build.log
     increment_step
 
-    # ---->>>> Instalação finalizada :)
-    echo "Instalação concluída com sucesso. Digite '$CMD_NAME' para acessar o menu."
+    echo ""
+    echo "✅ Instalação concluída com sucesso!"
+    echo "📌 Digite '$CMD_NAME' para acessar o menu interativo."
+    echo ""
+    echo "Exemplo de uso:"
+    echo "  $CMD_NAME"
+    echo "  $CMD_NAME --port 8080 --status '@MTProxy' --target 127.0.0.1:22"
+    echo ""
 fi
