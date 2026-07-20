@@ -61,7 +61,7 @@ fn parse_args() -> Config {
     Config { port, status, default_target }
 }
 
-async fn handle_client(socket: tokio::net::TcpStream, cfg: Config) -> std::io::Result<()> {
+async fn handle_client(socket: TcpStream, cfg: Config) -> std::io::Result<()> {
     let mut peek_buf = [0u8; 8];
     let n = socket.peek(&mut peek_buf).await?;
 
