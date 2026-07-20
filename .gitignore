@@ -1,0 +1,24 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+*.exp
+*.lib
+*.dll
+*.so
+*.dylib
+
+# macOS
+.DS_Store
+
+# Linux
+*.swp
+*.swo
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Generated files
+Cargo.lock
