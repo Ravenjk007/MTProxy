@@ -29,23 +29,28 @@ show_menu() {
     local ports
     ports=$(list_ports | tr '\n' ' ')
     [ -z "$ports" ] && ports="nenhuma"
-    
-    echo "╔══════════════════════════════════════════════╗"
-    echo "║       MTProxy v2 - Manager                   ║"
-    echo "╠══════════════════════════════════════════════╣"
-    echo "║  Porta(s) ativas: $ports"
-    echo "║  IP Público: $PUBLIC_IP"
-    echo "║  Secret: ${SECRET:0:16}..."
-    echo "╠══════════════════════════════════════════════╣"
-    echo "║  1 - Abrir Porta (FakeTLS/ee)                ║"
-    echo "║  2 - Abrir Porta (Direct/dd)                 ║"
-    echo "║  3 - Fechar Porta                            ║"
-    echo "║  4 - Reiniciar Porta                         ║"
-    echo "║  5 - Gerar Secret                            ║"
-    echo "║  6 - Ver Log                                 ║"
-    echo "║  7 - Gerar Link Proxy                        ║"
-    echo "║  0 - Sair                                    ║"
-    echo "╚══════════════════════════════════════════════╝"
+
+    local CYAN="\033[1;36m"
+    local RED="\033[1;31m"
+    local YELLOW="\033[1;33m"
+    local NC="\033[0m"
+
+    echo -e "${CYAN}┌──────────────────────────────┐${NC}"
+    echo -e "${CYAN}│      MTProxy Proxy Menu       │${NC}"
+    echo -e "${CYAN}└──────────────────────────────┘${NC}"
+    echo -e "${YELLOW}Em uso: $ports${NC}"
+    echo -e "${YELLOW}IP Público: $PUBLIC_IP${NC}"
+    echo -e "${YELLOW}Secret: ${SECRET:0:16}...${NC}"
+    echo -e "${CYAN}┌──────────────────────────────┐${NC}"
+    echo -e "${CYAN}[01]${NC} • ${RED}ABRIR PORTA (FakeTLS)${NC}"
+    echo -e "${CYAN}[02]${NC} • ${RED}ABRIR PORTA (Direct)${NC}"
+    echo -e "${CYAN}[03]${NC} • ${RED}FECHAR PORTA${NC}"
+    echo -e "${CYAN}[04]${NC} • ${RED}REINICIAR PORTA${NC}"
+    echo -e "${CYAN}[05]${NC} • ${RED}GERAR SECRET${NC}"
+    echo -e "${CYAN}[06]${NC} • ${RED}VER LOG DA PORTA${NC}"
+    echo -e "${CYAN}[07]${NC} • ${RED}GERAR LINK PROXY${NC}"
+    echo -e "${CYAN}[00]${NC} • ${RED}SAIR${NC}"
+    echo -e "${CYAN}└──────────────────────────────┘${NC}"
 }
 
 open_port() {
@@ -255,16 +260,16 @@ view_log() {
 
 while true; do
     show_menu
-    read -rp "--> Opção: " opt
+    read -rp $'\xf0\x9f\x91\x89 Digite sua opção: ' opt
     case "$opt" in
-        1) open_port "ee" "FakeTLS" ;;
-        2) open_port "dd" "Direct" ;;
-        3) close_port ;;
-        4) restart_port ;;
-        5) generate_secret ;;
-        6) view_log ;;
-        7) generate_link ;;
-        0) exit 0 ;;
+        1|01) open_port "ee" "FakeTLS" ;;
+        2|02) open_port "dd" "Direct" ;;
+        3|03) close_port ;;
+        4|04) restart_port ;;
+        5|05) generate_secret ;;
+        6|06) view_log ;;
+        7|07) generate_link ;;
+        0|00) exit 0 ;;
         *) echo -e "\033[1;31mOpção inválida.\033[0m"; sleep 1 ;;
     esac
 done
