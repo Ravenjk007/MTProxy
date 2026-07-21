@@ -26,6 +26,28 @@ if [ "$EUID" -ne 0 ]; then
     error_exit "Execute como root (sudo ./install.sh)"
 fi
 
+# URL do repositório (usado apenas quando o script roda via curl | bash)
+REPO_URL="https://github.com/Ravenjk007/MTProxy.git"
+
+# Detecta se o script está sendo executado via pipe (curl ... | bash)
+# Nesse caso $0 aponta para /dev/fd/* ou /proc/self/fd/*, não para um arquivo real
+SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+if [ -z "$SCRIPT_DIR" ] || [[ "$SCRIPT_DIR" == /proc/* ]] || [[ "$SCRIPT_DIR" == /dev/fd* ]] || [ ! -f "$SCRIPT_DIR/Cargo.toml" ]; then
+    clear
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║       MTProxy v2.0 - Installer               ║"
+    echo "╚══════════════════════════════════════════════╝"
+    echo ""
+    echo -e "\033[1;36m[Setup]\033[0m Executando via pipe, clonando repositório..."
+    apt update -y >/dev/null 2>&1
+    apt install -y git >/dev/null 2>&1 || error_exit "Falha ao instalar git"
+    BUILD_DIR="/root/MTProxy-v2-build"
+    rm -rf "$BUILD_DIR"
+    git clone --depth 1 "$REPO_URL" "$BUILD_DIR" || error_exit "Falha ao clonar o repositório"
+    cd "$BUILD_DIR" || error_exit "Diretório de build não encontrado"
+    exec bash install.sh "$@"
+fi
+
 clear
 echo "╔══════════════════════════════════════════════╗"
 echo "║       MTProxy v2.0 - Installer               ║"
@@ -70,7 +92,8 @@ echo "  Rust versão: $RUST_VERSION"
 increment_step
 
 show_progress "Compilando MTProxy v2..."
-cd "$(dirname "$0")" || error_exit "Diretório não encontrado"
+cd "$(cd "$(dirname "$0")" && pwd)" || error_exit "Diretório não encontrado"
+[ -f Cargo.toml ] || error_exit "Cargo.toml não encontrado em $(pwd)"
 
 echo "  Compilando com otimizações (pode levar alguns minutos)..."
 cargo build --release || error_exit "Falha ao compilar"
