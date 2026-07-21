@@ -118,12 +118,14 @@ increment_step
 show_progress "Copiando scripts de gerenciamento..."
 [ -f manager.sh ] && cp manager.sh /opt/mtproxy-v2/manager.sh
 [ -f menu.sh ] && cp menu.sh /opt/mtproxy-v2/menu.sh
+[ -f wsproxy.py ] && cp wsproxy.py /opt/mtproxy-v2/wsproxy.py
 increment_step
 
 show_progress "Configurando permissões..."
 chmod +x /opt/mtproxy-v2/mtproxy
 [ -f /opt/mtproxy-v2/manager.sh ] && chmod +x /opt/mtproxy-v2/manager.sh
 [ -f /opt/mtproxy-v2/menu.sh ] && chmod +x /opt/mtproxy-v2/menu.sh
+[ -f /opt/mtproxy-v2/wsproxy.py ] && chmod +x /opt/mtproxy-v2/wsproxy.py
 
 if [ -f /opt/mtproxy-v2/manager.sh ]; then
     ln -sf /opt/mtproxy-v2/manager.sh /usr/local/bin/mtproxy
