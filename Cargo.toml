@@ -1,10 +1,34 @@
 [package]
 name = "mtproxy"
-version = "0.1.0"
+version = "2.0.0"
 edition = "2021"
 authors = ["Ravenjk007 <seugmailaqui>"]
-description = "MTProxy - Proxy multifuncional (SOCKS5, WebSocket, modo direto)"
+description = "MTProxy v2 - Multi-protocol proxy (MTProto Classic, FakeTLS, SOCKS5, WebSocket, Direct)"
 license = "MIT"
+keywords = ["mtproxy", "telegram", "proxy", "socks5", "vpn"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+rand = "0.8"
+sha1 = "0.10"
+aes = "0.8"
+ctr = "0.9"
+byteorder = "1"
+hex = "0.4"
+base64 = "0.22"
+lru = "0.12"
+rustls = "0.23"
+rustls-pki-types = "1"
+webpki-roots = "0.26"
+clap = { version = "4", features = ["derive"] }
+tokio-rustls = "0.26"
+log = "0.4"
+env_logger = "0.11"
+time = "0.3"
+parking_lot = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
