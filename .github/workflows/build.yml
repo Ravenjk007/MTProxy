@@ -1,4 +1,4 @@
-name: Build
+name: Build MTProxy
 
 on:
   push:
@@ -9,14 +9,57 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
+    
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential pkg-config libssl-dev
+
     - name: Build
       run: |
-        cargo build --verbose
-        cargo build --release --verbose
+        cargo build --release --target ${{ matrix.target }}
+        
+    - name: Test
+      run: cargo test
+
     - name: Upload binary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: mtproxy
-        path: target/release/mtproxy
+        name: mtproxy-${{ matrix.target }}
+        path: target/${{ matrix.target }}/release/mtproxy
+
+  build-musl:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: x86_64-unknown-linux-musl
+
+    - name: Install musl tools
+      run: sudo apt install -y musl-tools
+
+    - name: Build static binary
+      run: |
+        sudo rustup target add x86_64-unknown-linux-musl
+        cargo build --release --target x86_64-unknown-linux-musl
+
+    - name: Upload static binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: mtproxy-static
+        path: target/x86_64-unknown-linux-musl/release/mtproxy
