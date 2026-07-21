@@ -5,6 +5,9 @@
 
 set -e
 
+LOG_FILE="/var/log/mtproxy-install.log"
+: > "$LOG_FILE"
+
 TOTAL_STEPS=10
 CURRENT_STEP=0
 
@@ -15,6 +18,7 @@ show_progress() {
 
 error_exit() {
     echo -e "\n\033[1;31mERRO: $1\033[0m"
+    echo -e "\033[1;31mDetalhes em: $LOG_FILE\033[0m"
     exit 1
 }
 
@@ -39,8 +43,8 @@ if [ -z "$SCRIPT_DIR" ] || [[ "$SCRIPT_DIR" == /proc/* ]] || [[ "$SCRIPT_DIR" ==
     echo "╚══════════════════════════════════════════════╝"
     echo ""
     echo -e "\033[1;36m[Setup]\033[0m Executando via pipe, clonando repositório..."
-    apt update -y >/dev/null 2>&1
-    apt install -y git >/dev/null 2>&1 || error_exit "Falha ao instalar git"
+    apt update -y >> "$LOG_FILE" 2>&1
+    apt install -y git >> "$LOG_FILE" 2>&1 || error_exit "Falha ao instalar git"
     BUILD_DIR="/root/MTProxy-v2-build"
     rm -rf "$BUILD_DIR"
     git clone --depth 1 "$REPO_URL" "$BUILD_DIR" || error_exit "Falha ao clonar o repositório"
@@ -56,18 +60,18 @@ echo ""
 
 show_progress "Atualizando repositórios..."
 export DEBIAN_FRONTEND=noninteractive
-apt update -y || error_exit "Falha ao atualizar repositórios"
+apt update -y >> "$LOG_FILE" 2>&1 || error_exit "Falha ao atualizar repositórios"
 increment_step
 
 show_progress "Verificando sistema..."
 if ! command -v lsb_release >/dev/null 2>&1; then
-    apt install -y lsb-release || error_exit "Falha ao instalar lsb-release"
+    apt install -y lsb-release >> "$LOG_FILE" 2>&1 || error_exit "Falha ao instalar lsb-release"
 fi
 increment_step
 
 show_progress "Instalando dependências..."
-apt upgrade -y
-apt install -y curl build-essential git pkg-config libssl-dev pkg-config
+apt upgrade -y >> "$LOG_FILE" 2>&1
+apt install -y curl build-essential git pkg-config libssl-dev pkg-config >> "$LOG_FILE" 2>&1
 increment_step
 
 show_progress "Criando diretório de instalação..."
@@ -77,7 +81,7 @@ increment_step
 
 show_progress "Instalando Rust..."
 if ! command -v rustc >/dev/null 2>&1; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y >> "$LOG_FILE" 2>&1
     source "$HOME/.cargo/env"
 fi
 
@@ -96,7 +100,17 @@ cd "$(cd "$(dirname "$0")" && pwd)" || error_exit "Diretório não encontrado"
 [ -f Cargo.toml ] || error_exit "Cargo.toml não encontrado em $(pwd)"
 
 echo "  Compilando com otimizações (pode levar alguns minutos)..."
-cargo build --release || error_exit "Falha ao compilar"
+cargo build --release >> "$LOG_FILE" 2>&1 &
+BUILD_PID=$!
+SPIN='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+i=0
+while kill -0 "$BUILD_PID" 2>/dev/null; do
+    i=$(( (i+1) % ${#SPIN} ))
+    printf "\r  %s Compilando... " "${SPIN:$i:1}"
+    sleep 0.2
+done
+wait "$BUILD_PID" || { printf "\r"; error_exit "Falha ao compilar"; }
+printf "\r  ✅ Compilação concluída.          \n"
 
 cp target/release/mtproxy /opt/mtproxy-v2/mtproxy || error_exit "Binário não encontrado"
 increment_step
